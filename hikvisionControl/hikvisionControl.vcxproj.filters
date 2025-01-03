@@ -18,9 +18,15 @@
     <ClCompile Include="hikvisionControl.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="cameraSet.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\EN-HCNetSDKV6.1.9.48_build20230410_win64\incEn\HCNetSDK.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="cameraSet.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

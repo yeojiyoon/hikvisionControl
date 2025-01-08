@@ -38,13 +38,23 @@ public:
 
 	void setIUserID()
 	{
+		cout << "add: " << loginInfo.sDeviceAddress << endl;
+		cout << "name: " << loginInfo.sUserName << endl;
+		cout << "pw: " << loginInfo.sPassword << endl;
+
 		lUserID = NET_DVR_Login_V40(&loginInfo, &deviceInfo);
+
+		cout << lUserID << endl;
+
 		if (lUserID < 0)
 		{
-			cerr << "NET_DVR_Login_V40 error!" << endl;
+			cerr << "NET_DVR_Login_V40 error! Error code: " << NET_DVR_GetLastError() << endl;
 			NET_DVR_Cleanup();
 		}
-		else cout << "NET_DVR_Login_V40 success!" << endl;
+		else
+		{
+			cout << "NET_DVR_Login_V40 success!" << endl;
+		}
 	}
 
 	NET_DVR_USER_LOGIN_INFO getLoginInfo()

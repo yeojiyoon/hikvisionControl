@@ -10,6 +10,7 @@
 #include <shared_mutex>
 #include <thread>
 #include <atomic>
+#include <ctime>
 #pragma comment(lib, "HCNetSDK.lib")
 #pragma warning(disable:4996)
 
@@ -113,22 +114,37 @@ NET_DVR_PREVIEWINFO setPreviewInfo(int lChannel, int dwStreamType, int dwLinkMod
 
 //녹화 시작 함수
 void StartRecording(LONG realPlayHandle, char* filePath) {
+	//---------------------------------------
+	//타이머 설정
+	time_t timer;
+	struct tm* t;
+	timer = time(NULL);
+	t = localtime(&timer);
+	//---------------------------------------
+	
 	if (!NET_DVR_SaveRealData(realPlayHandle, filePath)) {
 		cout << "Failed to start saving data, error: " << NET_DVR_GetLastError() << endl;
 	}
 	else {
-		cout << "Recording started. Saving to: " << filePath << endl;
+		cout << "Recording started. Saving to: " << filePath << " " << t->tm_hour << ":" << t->tm_min << ":" << t->tm_sec << endl;
 		isRecording = true;
 	}
 }
 
 //녹화 종료 함수
 void StopRecording(LONG realPlayHandle) {
+	//---------------------------------------
+	//타이머 설정
+	time_t timer;
+	struct tm* t;
+	timer = time(NULL);
+	t = localtime(&timer);
+	//---------------------------------------
 	if (!NET_DVR_StopSaveRealData(realPlayHandle)) {
 		cout << "Failed to stop saving data, error: " << NET_DVR_GetLastError() << endl;
 	}
 	else {
-		cout << "Recording stopped." << endl;
+		cout << "Recording stopped." << t->tm_hour << ":" << t->tm_min << ":" << t->tm_sec << endl;
 		isRecording = false;
 	}
 }
@@ -224,6 +240,9 @@ void checkError() {
 		case 32:
 			cerr << "Error: 데이터 형식 오류 (NET_DVR_FORMAT_ERROR)" << endl;
 			break;
+		case 34:
+			cerr << "Error: 데이터 저장 오류 (NET_DVR_CREATEFILE_ERROR)" << endl;
+			break;	
 		case 40:
 			cerr << "Error: 장치에서 오류가 발생했습니다. (NET_DVR_DEVICE_ERROR)" << endl;
 			break;
@@ -248,11 +267,32 @@ void checkError() {
 
 int main()
 {
+	//---------------------------------------
+	//타이머 설정
+	time_t timer;
+	struct tm* t;
+	timer = time(NULL);
+	t = localtime(&timer);
+	//---------------------------------------
+
 	if (!init()) return -1;
+
+	char address[] = "./SdkLog/";
+
+	NET_DVR_SetLogToFile(TRUE, address, 0);
+
 	NET_DVR_SetConnectTime(2000, 1);
 	NET_DVR_SetReconnect(10000, true);
 
 	cameraSet cam = logIn("192.168.0.64", "admin", "insung1025", 8000);
+
+	NET_DVR_WORKSTATE_V30 deviceState = { 0 };
+	if (!NET_DVR_GetDVRWorkState_V30(cam.getIUserID(), &deviceState)) {
+		printf("장치 상태 가져오기 실패, 오류 코드: %d\n", NET_DVR_GetLastError());
+	}
+	else {
+		printf("장치 상태 확인 성공\n");
+	}
 
 	HWND hwnd = createWindow();
 	if (!hwnd)
@@ -262,14 +302,18 @@ int main()
 		return -1;
 	}
 
-	NET_DVR_PREVIEWINFO previewInfo = setPreviewInfo(1, 0, 0, NULL);
-	previewInfo.bBlocked = 1;
+	//---------------------------------------
+
+	cout << cam.getLoginInfo().sDeviceAddress << endl;
+	
+	NET_DVR_PREVIEWINFO previewInfo = setPreviewInfo(1, 0, 0, hwnd);
+	previewInfo.bBlocked = FALSE;
 
 	checkError();
-
+	
 	cout << cam.getIUserID() << endl;
 
-	LONG playHandle = NET_DVR_RealPlay_V40(cam.getIUserID(), &previewInfo, nullptr, nullptr);
+	LONG playHandle = NET_DVR_RealPlay_V40(cam.getIUserID(), &previewInfo, NULL, NULL);
 	if (playHandle < 0) {
 		checkError();
 		NET_DVR_Cleanup();

@@ -42,6 +42,7 @@ public:
 		cout << "name: " << loginInfo.sUserName << endl;
 		cout << "pw: " << loginInfo.sPassword << endl;
 
+		NET_DVR_Init();
 		lUserID = NET_DVR_Login_V40(&loginInfo, &deviceInfo);
 
 		cout << lUserID << endl;

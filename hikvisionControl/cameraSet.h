@@ -42,9 +42,10 @@ public:
 		cout << "name: " << loginInfo.sUserName << endl;
 		cout << "pw: " << loginInfo.sPassword << endl;
 
+		NET_DVR_Init();
 		lUserID = NET_DVR_Login_V40(&loginInfo, &deviceInfo);
 
-		cout << "lUserID:" << lUserID << endl;
+		cout << lUserID << endl;
 
 		if (lUserID < 0)
 		{
@@ -55,6 +56,7 @@ public:
 		{
 			cout << "NET_DVR_Login_V40 success!" << endl;
 		}
+		cout << NET_DVR_GetLastError() << endl;
 	}
 
 	NET_DVR_USER_LOGIN_INFO getLoginInfo()

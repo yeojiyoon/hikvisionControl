@@ -1,28 +1,102 @@
-﻿#include <stdio.h>
-#include <iostream>
-#include <fstream>
-#include <cstring>
-#include "Windows.h"
+﻿#include "cameraSet.h"
 #include "HCNetSDK.h"
-#include <time.h>
-#include <conio.h>
-#include "cameraSet.h"
-#include <shared_mutex>
-#include <thread>
+#include "Windows.h"
 #include <atomic>
+#include <conio.h>
+#include <cstring>
 #include <ctime>
+#include <fstream>
+#include <iostream>
+#include <shared_mutex>
+#include <stdio.h>
+#include <stdlib.h>
+#include <thread>
+#include <time.h>
+
+#define START	0
+#define STOP	1
+
 #pragma comment(lib, "HCNetSDK.lib")
 #pragma warning(disable:4996)
 
 using namespace std;
-
 bool isRecording = false;
+
+const int CONNECT_TIMEOUT = 2000;
+const int RECONNECT_INTERVAL = 10000;
+char LOG_FILE_PATH[] = "./SdkLog/";
+
+time_t timer;
+struct tm* t;
+
+void logError(const string& message);
+void setTimer();
+void checkError();
+
+int init();
+HWND createWindow();
+NET_DVR_PREVIEWINFO setPreviewInfo(int lChannel, int dwStreamType, int dwLinkMode, HWND hwnd);
+
+cameraSet logIn(const char* ip, const char* id, const char* pw, int port);
+LONG startLiveStream(cameraSet cam, HWND hwnd);
+void StartRecording(LONG realPlayHandle, char* filePath);
+void StopRecording(LONG realPlayHandle);
+
+void showWindow();
+char* setFileName();
+void checkKey(LONG playHandle);
+void handleMessageLoop(cameraSet cam, LONG playHandle);
+void PTZControl(cameraSet cam);
+
+struct Config
+{
+	string server_ip;
+	int server_port;
+	string username;
+	string password;
+};
+
+int main()
+{
+	setTimer();
+
+	if (!init()) return -1;
+
+	NET_DVR_SetLogToFile(TRUE, LOG_FILE_PATH, 0);
+	NET_DVR_SetConnectTime(CONNECT_TIMEOUT, 1);
+	NET_DVR_SetReconnect(RECONNECT_INTERVAL, true);
+
+	cameraSet cam = logIn("192.168.0.64", "admin", "password132!", 8000);
+
+	HWND hwnd = createWindow();
+	
+	cout << cam.getLoginInfo().sDeviceAddress << endl;
+
+	NET_DVR_PREVIEWINFO previewInfo = setPreviewInfo(1, 0, 0, hwnd);
+	previewInfo.bBlocked = FALSE;
+
+	checkError();
+
+	LONG playHandle = startLiveStream(cam, hwnd);
+
+	handleMessageLoop(cam, playHandle);
+
+	NET_DVR_StopRealPlay(playHandle); //라이브 뷰 종료
+	NET_DVR_Logout(cam.getIUserID()); //로그아웃
+	NET_DVR_Cleanup(); //SDK 종료
+
+	return 0;
+}
 
 void logError(const string& message) {
 	ofstream logFile("error.log", ios::app);
 	logFile << "[" << time(nullptr) << "] " << message << endl;
 }
 
+void setTimer() {
+	timer = time(NULL);
+	t = localtime(&timer);
+}
 //초기화 함수
 int init()
 {
@@ -60,30 +134,13 @@ HWND createWindow()
 		NET_DVR_Cleanup();
 		return nullptr;
 	}
-
-	return hwnd;
-}
-
-struct Config {
-	string ip;
-	string username;
-	string password;
-	int port;
-};
-
-Config readConfig(const string& filename) {
-	Config config;
-	ifstream configFile(filename);
-
-	if (!configFile.is_open()) {
-		cerr << "Failed to open config file!" << endl;
-		logError("Failed to open config file!");
-		exit(EXIT_FAILURE);
+	if (!hwnd)
+	{
+		cerr << "CreateWindowEx error!" << endl;
+		NET_DVR_Cleanup();
+		exit(1);
 	}
-
-	configFile >> config.ip >> config.username >> config.password >> config.port;
-	configFile.close();
-	return config;
+	return hwnd;
 }
 
 //로그인 함수
@@ -114,18 +171,12 @@ NET_DVR_PREVIEWINFO setPreviewInfo(int lChannel, int dwStreamType, int dwLinkMod
 
 //녹화 시작 함수
 void StartRecording(LONG realPlayHandle, char* filePath) {
-	//---------------------------------------
-	//타이머 설정
-	time_t timer;
-	struct tm* t;
-	timer = time(NULL);
-	t = localtime(&timer);
-	//---------------------------------------
-	
+
 	if (!NET_DVR_SaveRealData(realPlayHandle, filePath)) {
 		cout << "Failed to start saving data, error: " << NET_DVR_GetLastError() << endl;
 	}
 	else {
+		setTimer();
 		cout << "Recording started. Saving to: " << filePath << " " << t->tm_hour << ":" << t->tm_min << ":" << t->tm_sec << endl;
 		isRecording = true;
 	}
@@ -133,17 +184,11 @@ void StartRecording(LONG realPlayHandle, char* filePath) {
 
 //녹화 종료 함수
 void StopRecording(LONG realPlayHandle) {
-	//---------------------------------------
-	//타이머 설정
-	time_t timer;
-	struct tm* t;
-	timer = time(NULL);
-	t = localtime(&timer);
-	//---------------------------------------
 	if (!NET_DVR_StopSaveRealData(realPlayHandle)) {
 		cout << "Failed to stop saving data, error: " << NET_DVR_GetLastError() << endl;
 	}
 	else {
+		setTimer();
 		cout << "Recording stopped." << t->tm_hour << ":" << t->tm_min << ":" << t->tm_sec << endl;
 		isRecording = false;
 	}
@@ -160,9 +205,20 @@ void showWindow()
 	}
 }
 
-//키 입력 확인 함수
-void checkKey(LONG playHandle, char* saveFilePath)
+char* setFileName()
 {
+	char fileName[100];
+	char tmp[100];
+	setTimer();
+	sprintf(tmp, "C:\\Recordings\\output_%d-%d-%d_%d-%d-%d.mp4", t->tm_year + 1900, t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec);
+	strcpy(fileName, tmp);
+	return fileName;
+}
+//키 입력 확인 함수
+void checkKey(LONG playHandle)
+{
+	char saveFilePath[100];
+
 	while (true)
 	{
 		if (_kbhit())
@@ -176,15 +232,16 @@ void checkKey(LONG playHandle, char* saveFilePath)
 				}
 				else
 				{
+					strcpy(saveFilePath, setFileName());
 					StartRecording(playHandle, saveFilePath);
 				}
 			}
-			else if (ch == 'Q' || ch == 'q')   
-			{  
-				break;
+			else if (ch == 'Q' || ch == 'q')
+			{
+				exit(1);
 			}
 		}
-		Sleep(100); // CPU 사용률 절약
+		//Sleep(100); // CPU 사용률 절약
 	}
 }
 
@@ -242,7 +299,7 @@ void checkError() {
 			break;
 		case 34:
 			cerr << "Error: 데이터 저장 오류 (NET_DVR_CREATEFILE_ERROR)" << endl;
-			break;	
+			break;
 		case 40:
 			cerr << "Error: 장치에서 오류가 발생했습니다. (NET_DVR_DEVICE_ERROR)" << endl;
 			break;
@@ -265,53 +322,11 @@ void checkError() {
 	}
 }
 
-int main()
+LONG startLiveStream(cameraSet cam, HWND hwnd)
 {
-	//---------------------------------------
-	//타이머 설정
-	time_t timer;
-	struct tm* t;
-	timer = time(NULL);
-	t = localtime(&timer);
-	//---------------------------------------
-
-	if (!init()) return -1;
-
-	char address[] = "./SdkLog/";
-
-	NET_DVR_SetLogToFile(TRUE, address, 0);
-
-	NET_DVR_SetConnectTime(2000, 1);
-	NET_DVR_SetReconnect(10000, true);
-
-	cameraSet cam = logIn("192.168.0.64", "admin", "insung1025", 8000);
-
-	NET_DVR_WORKSTATE_V30 deviceState = { 0 };
-	if (!NET_DVR_GetDVRWorkState_V30(cam.getIUserID(), &deviceState)) {
-		printf("장치 상태 가져오기 실패, 오류 코드: %d\n", NET_DVR_GetLastError());
-	}
-	else {
-		printf("장치 상태 확인 성공\n");
-	}
-
-	HWND hwnd = createWindow();
-	if (!hwnd)
-	{
-		cerr << "CreateWindowEx error!" << endl;
-		NET_DVR_Cleanup();
-		return -1;
-	}
-
-	//---------------------------------------
-
-	cout << cam.getLoginInfo().sDeviceAddress << endl;
-	
 	NET_DVR_PREVIEWINFO previewInfo = setPreviewInfo(1, 0, 0, hwnd);
 	previewInfo.bBlocked = FALSE;
-
 	checkError();
-	
-	cout << cam.getIUserID() << endl;
 
 	LONG playHandle = NET_DVR_RealPlay_V40(cam.getIUserID(), &previewInfo, NULL, NULL);
 	if (playHandle < 0) {
@@ -322,24 +337,86 @@ int main()
 	else {
 		cout << "라이브 뷰 시작 성공" << endl;
 	}
-	
-	//---------------------------------------
-	//메시지 루프 (라이브 스트리밍 유지)
+	return playHandle;
+}
 
-	char saveFilePath[100] = "C:\\Recordings\\output.mp4";  // 저장할 파일 경로
+void handleMessageLoop(cameraSet cam, LONG playHandle) {
+	char saveFilePath[100] = { 0 };
+	strcpy(saveFilePath, setFileName());
 
 	thread windowThread(showWindow);
-	thread keyThread(checkKey, playHandle, saveFilePath);
+	thread keyThread(checkKey, playHandle);
+	thread PTZControlThread(PTZControl, cam);
 
 	windowThread.join();
 	keyThread.join();
+	PTZControlThread.join();
+}
 
-	//---------------------------------------
-	//라이브 스트리밍 종료
+void PTZControl(cameraSet cam)
+{
+	int ptzCommand = -1;
+	bool isStart = false;
+	
+	printf("press 1 to ZOOM_IN_START\n");
+	printf("press 2 to ZOOM_IN_STOP\n");
+	printf("press 3 to ZOOM_OUT_START\n");
+	printf("press 4 to ZOOM_OUT_STOP\n");
 
-	NET_DVR_StopRealPlay(playHandle); //라이브 뷰 종료
-	NET_DVR_Logout(cam.getIUserID()); //로그아웃
-	NET_DVR_Cleanup(); //SDK 종료
-
-	return 0;
+	while (true)
+	{
+		if (_kbhit())
+		{
+			char ch = _getch();
+			if (ch == '1')
+			{
+				if (!NET_DVR_PTZControl(cam.getIUserID(), ZOOM_IN, START))
+				{
+					cerr << "PTZ 제어 실패, 에러 코드: " << NET_DVR_GetLastError() << endl;
+				}
+				else
+				{
+					cout << "PTZ 제어 성공!" << endl;
+				}
+			}
+			else if (ch == '2')
+			{
+				if (!NET_DVR_PTZControl(cam.getIUserID(), ZOOM_IN, STOP))
+				{
+					cerr << "PTZ 제어 실패, 에러 코드: " << NET_DVR_GetLastError() << endl;
+				}
+				else
+				{
+					cout << "PTZ 제어 성공!" << endl;
+				}
+			}
+			else if (ch == '3')
+			{
+				if (!NET_DVR_PTZControl(cam.getIUserID(), ZOOM_OUT, START))
+				{
+					cerr << "PTZ 제어 실패, 에러 코드: " << NET_DVR_GetLastError() << endl;
+				}
+				else
+				{
+					cout << "PTZ 제어 성공!" << endl;
+				}
+			}
+			else if (ch == '4')
+			{
+				if (!NET_DVR_PTZControl(cam.getIUserID(), ZOOM_OUT, STOP))
+				{
+					cerr << "PTZ 제어 실패, 에러 코드: " << NET_DVR_GetLastError() << endl;
+				}
+				else
+				{
+					cout << "PTZ 제어 성공!" << endl;
+				}
+			}
+			else if (ch == 'Q' || ch == 'q')
+			{
+				exit(1);
+			}
+		}
+		//Sleep(100); // CPU 사용률 절약
+	}
 }

@@ -44,9 +44,8 @@ void StopRecording(LONG realPlayHandle);
 
 void showWindow();
 char* setFileName();
-void checkKey(LONG playHandle);
 void handleMessageLoop(cameraSet cam, LONG playHandle);
-void PTZControl(cameraSet cam);
+void PTZControl(cameraSet cam, LONG playHandle);
 
 struct Config
 {
@@ -215,35 +214,6 @@ char* setFileName()
 	return fileName;
 }
 //키 입력 확인 함수
-void checkKey(LONG playHandle)
-{
-	char saveFilePath[100];
-
-	while (true)
-	{
-		if (_kbhit())
-		{
-			char ch = _getch();
-			if (ch == 'R' || ch == 'r')
-			{
-				if (isRecording)
-				{
-					StopRecording(playHandle);
-				}
-				else
-				{
-					strcpy(saveFilePath, setFileName());
-					StartRecording(playHandle, saveFilePath);
-				}
-			}
-			else if (ch == 'Q' || ch == 'q')
-			{
-				exit(1);
-			}
-		}
-		//Sleep(100); // CPU 사용률 절약
-	}
-}
 
 void checkError() {
 	if (NET_DVR_GetLastError() != 0) {
@@ -344,24 +314,24 @@ void handleMessageLoop(cameraSet cam, LONG playHandle) {
 	char saveFilePath[100] = { 0 };
 	strcpy(saveFilePath, setFileName());
 
-	thread windowThread(showWindow);
-	thread keyThread(checkKey, playHandle);
-	thread PTZControlThread(PTZControl, cam);
+	thread PTZControlThread(PTZControl, cam, playHandle);
 
-	windowThread.join();
-	keyThread.join();
 	PTZControlThread.join();
+	showWindow();
+
 }
 
-void PTZControl(cameraSet cam)
+void PTZControl(cameraSet cam, LONG playHandle)
 {
-	int ptzCommand = -1;
 	bool isStart = false;
-	
+	char saveFilePath[100];
+
 	printf("press 1 to ZOOM_IN_START\n");
 	printf("press 2 to ZOOM_IN_STOP\n");
 	printf("press 3 to ZOOM_OUT_START\n");
 	printf("press 4 to ZOOM_OUT_STOP\n");
+	printf("press R to start/stop recording\n");
+	printf("press Q to quit\n");
 
 	while (true)
 	{
@@ -412,11 +382,22 @@ void PTZControl(cameraSet cam)
 					cout << "PTZ 제어 성공!" << endl;
 				}
 			}
+			else if (ch == 'R' || ch == 'r')
+			{
+				if (isRecording)
+				{
+					StopRecording(playHandle);
+				}
+				else
+				{
+					strcpy(saveFilePath, setFileName());
+					StartRecording(playHandle, saveFilePath);
+				}
+			}
 			else if (ch == 'Q' || ch == 'q')
 			{
 				exit(1);
 			}
 		}
-		//Sleep(100); // CPU 사용률 절약
 	}
 }

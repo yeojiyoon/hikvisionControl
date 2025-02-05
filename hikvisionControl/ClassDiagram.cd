@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1">
+  <Class Name="cameraSet">
+    <Position X="2.25" Y="0.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AIAAAAAAEAAAAAIAAkACAAAAAAABAAAAACEAAAAAAAA=</HashCode>
+      <FileName>cameraSet.cpp</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Struct Name="Config">
+    <Position X="0.5" Y="1.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAEAAEAAAAAAAAAAAAAAiAAAAA=</HashCode>
+      <FileName>hikvisionControl.cpp</FileName>
+    </TypeIdentifier>
+  </Struct>
+  <Font Name="맑은 고딕" Size="9" />
+</ClassDiagram>

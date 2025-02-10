@@ -132,11 +132,13 @@
   <ItemGroup>
     <ClCompile Include="cameraSet.cpp" />
     <ClCompile Include="hikvisionControl.cpp" />
+    <ClCompile Include="PTZController.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\EN-HCNetSDKV6.1.9.48_build20230410_win64\incEn\HCNetSDK.h" />
     <ClInclude Include="atheleteInfo.h" />
     <ClInclude Include="cameraSet.h" />
+    <ClInclude Include="PTZController.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

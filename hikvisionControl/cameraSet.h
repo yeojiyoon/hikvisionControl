@@ -1,3 +1,6 @@
+#ifndef CAMERA_SET_H
+#define CAMERA_SET_H
+
 #include <stdio.h>
 #include <iostream>
 #include <cstring>
@@ -74,3 +77,5 @@ public:
 		return lUserID;
 	}
 };
+
+#endif // CAMERA_SET_H

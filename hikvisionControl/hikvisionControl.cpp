@@ -1,5 +1,6 @@
-﻿#include "cameraSet.h"
-#include "HCNetSDK.h"
+﻿#include "HCNetSDK.h"
+#include "cameraSet.h"
+#include "PTZController.h"
 #include "Windows.h"
 #include <atomic>
 #include <conio.h>
@@ -39,14 +40,13 @@ NET_DVR_PREVIEWINFO setPreviewInfo(int lChannel, int dwStreamType, int dwLinkMod
 
 cameraSet logIn(const char* ip, const char* id, const char* pw, int port);
 LONG startLiveStream(cameraSet cam, HWND hwnd);
-void StartRecording(LONG realPlayHandle, char* filePath);
-void StopRecording(LONG realPlayHandle);
+//void StartRecording(LONG realPlayHandle, char* filePath);
+//void StopRecording(LONG realPlayHandle);
 
 void showWindow();
-char* setFileName();
-void checkKey(LONG playHandle);
+//char* setFileName();
 void handleMessageLoop(cameraSet cam, LONG playHandle);
-void PTZControl(cameraSet cam);
+//void PTZControl(cameraSet cam, LONG playHandle);
 
 struct Config
 {
@@ -69,7 +69,7 @@ int main()
 	cameraSet cam = logIn("192.168.0.64", "admin", "password132!", 8000);
 
 	HWND hwnd = createWindow();
-	
+
 	cout << cam.getLoginInfo().sDeviceAddress << endl;
 
 	NET_DVR_PREVIEWINFO previewInfo = setPreviewInfo(1, 0, 0, hwnd);
@@ -78,9 +78,17 @@ int main()
 	checkError();
 
 	LONG playHandle = startLiveStream(cam, hwnd);
+	
+	PTZController controller(cam, playHandle);
+	controller.start();
 
-	handleMessageLoop(cam, playHandle);
+	//PTZControlThread.join();
+	showWindow();
 
+	//handleMessageLoop(cam, playHandle); //스레드 시작
+
+	//controller.stop();
+	
 	NET_DVR_StopRealPlay(playHandle); //라이브 뷰 종료
 	NET_DVR_Logout(cam.getIUserID()); //로그아웃
 	NET_DVR_Cleanup(); //SDK 종료
@@ -159,7 +167,7 @@ cameraSet logIn(const char* ip, const char* id, const char* pw, int port)
 }
 
 //라이브 뷰 설정 함수
-NET_DVR_PREVIEWINFO setPreviewInfo(int lChannel, int dwStreamType, int dwLinkMode, HWND hwnd) //클래스?
+NET_DVR_PREVIEWINFO setPreviewInfo(int lChannel, int dwStreamType, int dwLinkMode, HWND hwnd) 
 {
 	NET_DVR_PREVIEWINFO previewInfo = { 0 };
 	previewInfo.lChannel = lChannel;
@@ -168,7 +176,7 @@ NET_DVR_PREVIEWINFO setPreviewInfo(int lChannel, int dwStreamType, int dwLinkMod
 	previewInfo.hPlayWnd = hwnd; //영상 출력할 윈도우 핸들
 	return previewInfo;
 }
-
+/*
 //녹화 시작 함수
 void StartRecording(LONG realPlayHandle, char* filePath) {
 
@@ -192,7 +200,7 @@ void StopRecording(LONG realPlayHandle) {
 		cout << "Recording stopped." << t->tm_hour << ":" << t->tm_min << ":" << t->tm_sec << endl;
 		isRecording = false;
 	}
-}
+}*/
 
 //윈도우 메시지 루프 함수
 void showWindow()
@@ -204,7 +212,7 @@ void showWindow()
 		DispatchMessage(&msg);
 	}
 }
-
+/*
 char* setFileName()
 {
 	char fileName[100];
@@ -214,36 +222,8 @@ char* setFileName()
 	strcpy(fileName, tmp);
 	return fileName;
 }
+*/
 //키 입력 확인 함수
-void checkKey(LONG playHandle)
-{
-	char saveFilePath[100];
-
-	while (true)
-	{
-		if (_kbhit())
-		{
-			char ch = _getch();
-			if (ch == 'R' || ch == 'r')
-			{
-				if (isRecording)
-				{
-					StopRecording(playHandle);
-				}
-				else
-				{
-					strcpy(saveFilePath, setFileName());
-					StartRecording(playHandle, saveFilePath);
-				}
-			}
-			else if (ch == 'Q' || ch == 'q')
-			{
-				exit(1);
-			}
-		}
-		//Sleep(100); // CPU 사용률 절약
-	}
-}
 
 void checkError() {
 	if (NET_DVR_GetLastError() != 0) {
@@ -340,28 +320,25 @@ LONG startLiveStream(cameraSet cam, HWND hwnd)
 	return playHandle;
 }
 
-void handleMessageLoop(cameraSet cam, LONG playHandle) {
-	char saveFilePath[100] = { 0 };
-	strcpy(saveFilePath, setFileName());
-
-	thread windowThread(showWindow);
-	thread keyThread(checkKey, playHandle);
-	thread PTZControlThread(PTZControl, cam);
-
-	windowThread.join();
-	keyThread.join();
-	PTZControlThread.join();
-}
-
-void PTZControl(cameraSet cam)
+/*void handleMessageLoop(cameraSet cam, LONG playHandle)
 {
-	int ptzCommand = -1;
+	thread PTZControlThread(PTZControl, cam, playHandle);
+
+	PTZControlThread.join();
+	showWindow();
+}*/
+
+/*void PTZControl(cameraSet cam, LONG playHandle)
+{
 	bool isStart = false;
-	
+	char saveFilePath[100];
+
 	printf("press 1 to ZOOM_IN_START\n");
 	printf("press 2 to ZOOM_IN_STOP\n");
 	printf("press 3 to ZOOM_OUT_START\n");
 	printf("press 4 to ZOOM_OUT_STOP\n");
+	printf("press R to start/stop recording\n");
+	printf("press Q to quit\n");
 
 	while (true)
 	{
@@ -412,11 +389,22 @@ void PTZControl(cameraSet cam)
 					cout << "PTZ 제어 성공!" << endl;
 				}
 			}
+			else if (ch == 'R' || ch == 'r')
+			{
+				if (isRecording)
+				{
+					StopRecording(playHandle);
+				}
+				else
+				{
+					strcpy(saveFilePath, setFileName());
+					StartRecording(playHandle, saveFilePath);
+				}
+			}
 			else if (ch == 'Q' || ch == 'q')
 			{
 				exit(1);
 			}
 		}
-		//Sleep(100); // CPU 사용률 절약
 	}
-}
+}*/

@@ -57,13 +57,13 @@ private:
 
     char* setFileName()
     {
-        char fileName[100];
+        static char fileName[100];
         time_t now = time(0);
-        tm* ltm = localtime(&now);
+        tm* t = localtime(&now);
 
-        sprintf(fileName, "C:\\Recordings\\output_%d-%d-%d_%d-%d-%d.mp4",
-            1900 + ltm->tm_year, ltm->tm_mon + 1, ltm->tm_mday,
-            ltm->tm_hour, ltm->tm_min, ltm->tm_sec);
+        sprintf(fileName, "C:\\Recordings\\output_%d-%d-%d_%d-%d-%d.mp4", 
+            t->tm_year + 1900, t->tm_mon + 1, t->tm_mday, 
+            t->tm_hour, t->tm_min, t->tm_sec);
 
         return fileName;
     }
@@ -89,7 +89,8 @@ private:
         }
         else
         {
-            handleError("Recording stopped.");
+            cout << "Recording stopped." << endl;
+            isRecording = false;
         }
     }
 

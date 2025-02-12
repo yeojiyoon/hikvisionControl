@@ -40,13 +40,8 @@ NET_DVR_PREVIEWINFO setPreviewInfo(int lChannel, int dwStreamType, int dwLinkMod
 
 cameraSet logIn(const char* ip, const char* id, const char* pw, int port);
 LONG startLiveStream(cameraSet cam, HWND hwnd);
-//void StartRecording(LONG realPlayHandle, char* filePath);
-//void StopRecording(LONG realPlayHandle);
 
 void showWindow();
-//char* setFileName();
-void handleMessageLoop(cameraSet cam, LONG playHandle);
-//void PTZControl(cameraSet cam, LONG playHandle);
 
 struct Config
 {
@@ -82,13 +77,8 @@ int main()
 	PTZController controller(cam, playHandle);
 	controller.start();
 
-	//PTZControlThread.join();
 	showWindow();
 
-	//handleMessageLoop(cam, playHandle); //스레드 시작
-
-	//controller.stop();
-	
 	NET_DVR_StopRealPlay(playHandle); //라이브 뷰 종료
 	NET_DVR_Logout(cam.getIUserID()); //로그아웃
 	NET_DVR_Cleanup(); //SDK 종료
@@ -176,31 +166,6 @@ NET_DVR_PREVIEWINFO setPreviewInfo(int lChannel, int dwStreamType, int dwLinkMod
 	previewInfo.hPlayWnd = hwnd; //영상 출력할 윈도우 핸들
 	return previewInfo;
 }
-/*
-//녹화 시작 함수
-void StartRecording(LONG realPlayHandle, char* filePath) {
-
-	if (!NET_DVR_SaveRealData(realPlayHandle, filePath)) {
-		cout << "Failed to start saving data, error: " << NET_DVR_GetLastError() << endl;
-	}
-	else {
-		setTimer();
-		cout << "Recording started. Saving to: " << filePath << " " << t->tm_hour << ":" << t->tm_min << ":" << t->tm_sec << endl;
-		isRecording = true;
-	}
-}
-
-//녹화 종료 함수
-void StopRecording(LONG realPlayHandle) {
-	if (!NET_DVR_StopSaveRealData(realPlayHandle)) {
-		cout << "Failed to stop saving data, error: " << NET_DVR_GetLastError() << endl;
-	}
-	else {
-		setTimer();
-		cout << "Recording stopped." << t->tm_hour << ":" << t->tm_min << ":" << t->tm_sec << endl;
-		isRecording = false;
-	}
-}*/
 
 //윈도우 메시지 루프 함수
 void showWindow()
@@ -212,18 +177,6 @@ void showWindow()
 		DispatchMessage(&msg);
 	}
 }
-/*
-char* setFileName()
-{
-	char fileName[100];
-	char tmp[100];
-	setTimer();
-	sprintf(tmp, "C:\\Recordings\\output_%d-%d-%d_%d-%d-%d.mp4", t->tm_year + 1900, t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec);
-	strcpy(fileName, tmp);
-	return fileName;
-}
-*/
-//키 입력 확인 함수
 
 void checkError() {
 	if (NET_DVR_GetLastError() != 0) {
@@ -319,92 +272,3 @@ LONG startLiveStream(cameraSet cam, HWND hwnd)
 	}
 	return playHandle;
 }
-
-/*void handleMessageLoop(cameraSet cam, LONG playHandle)
-{
-	thread PTZControlThread(PTZControl, cam, playHandle);
-
-	PTZControlThread.join();
-	showWindow();
-}*/
-
-/*void PTZControl(cameraSet cam, LONG playHandle)
-{
-	bool isStart = false;
-	char saveFilePath[100];
-
-	printf("press 1 to ZOOM_IN_START\n");
-	printf("press 2 to ZOOM_IN_STOP\n");
-	printf("press 3 to ZOOM_OUT_START\n");
-	printf("press 4 to ZOOM_OUT_STOP\n");
-	printf("press R to start/stop recording\n");
-	printf("press Q to quit\n");
-
-	while (true)
-	{
-		if (_kbhit())
-		{
-			char ch = _getch();
-			if (ch == '1')
-			{
-				if (!NET_DVR_PTZControl(cam.getIUserID(), ZOOM_IN, START))
-				{
-					cerr << "PTZ 제어 실패, 에러 코드: " << NET_DVR_GetLastError() << endl;
-				}
-				else
-				{
-					cout << "PTZ 제어 성공!" << endl;
-				}
-			}
-			else if (ch == '2')
-			{
-				if (!NET_DVR_PTZControl(cam.getIUserID(), ZOOM_IN, STOP))
-				{
-					cerr << "PTZ 제어 실패, 에러 코드: " << NET_DVR_GetLastError() << endl;
-				}
-				else
-				{
-					cout << "PTZ 제어 성공!" << endl;
-				}
-			}
-			else if (ch == '3')
-			{
-				if (!NET_DVR_PTZControl(cam.getIUserID(), ZOOM_OUT, START))
-				{
-					cerr << "PTZ 제어 실패, 에러 코드: " << NET_DVR_GetLastError() << endl;
-				}
-				else
-				{
-					cout << "PTZ 제어 성공!" << endl;
-				}
-			}
-			else if (ch == '4')
-			{
-				if (!NET_DVR_PTZControl(cam.getIUserID(), ZOOM_OUT, STOP))
-				{
-					cerr << "PTZ 제어 실패, 에러 코드: " << NET_DVR_GetLastError() << endl;
-				}
-				else
-				{
-					cout << "PTZ 제어 성공!" << endl;
-				}
-			}
-			else if (ch == 'R' || ch == 'r')
-			{
-				if (isRecording)
-				{
-					StopRecording(playHandle);
-				}
-				else
-				{
-					strcpy(saveFilePath, setFileName());
-					StartRecording(playHandle, saveFilePath);
-				}
-			}
-			else if (ch == 'Q' || ch == 'q')
-			{
-				exit(1);
-			}
-		}
-	}
-}*/

@@ -45,11 +45,13 @@ void showWindow();
 
 struct Config
 {
-	string server_ip;
+	const char* server_ip;
 	int server_port;
-	string username;
-	string password;
+	const char* username;
+	const char* password;
 };
+
+Config setConfig();
 
 int main()
 {
@@ -61,7 +63,14 @@ int main()
 	NET_DVR_SetConnectTime(CONNECT_TIMEOUT, 1);
 	NET_DVR_SetReconnect(RECONNECT_INTERVAL, true);
 
-	cameraSet cam = logIn("192.168.0.64", "admin", "password132!", 8000);
+	Config config = setConfig();
+
+	cout << config.server_ip;
+	cout << config.username;
+	cout << config.password;
+
+	cameraSet cam = logIn(config.server_ip, config.username, config.password, config.server_port);
+	//cameraSet cam = logIn("192.168.0.64", "admin", "password132!", 8000);
 
 	HWND hwnd = createWindow();
 
@@ -73,7 +82,7 @@ int main()
 	checkError();
 
 	LONG playHandle = startLiveStream(cam, hwnd);
-	
+
 	PTZController controller(cam, playHandle);
 	controller.start();
 
@@ -86,19 +95,22 @@ int main()
 	return 0;
 }
 
-void logError(const string& message) {
+void logError(const string& message) 
+{
 	ofstream logFile("error.log", ios::app);
 	logFile << "[" << time(nullptr) << "] " << message << endl;
 }
 
-void setTimer() {
+void setTimer() 
+{
 	timer = time(NULL);
 	t = localtime(&timer);
 }
 //초기화 함수
 int init()
 {
-	if (!NET_DVR_Init()) {
+	if (!NET_DVR_Init()) 
+	{
 		cerr << "NET_DVR_Init error!" << endl;
 		logError("NET_DVR_Init error!");
 		return false;
@@ -110,7 +122,8 @@ int init()
 //윈도우 생성 함수
 HWND createWindow()
 {
-	HWND hwnd = CreateWindowEx(
+	HWND hwnd = CreateWindowEx
+	(
 		0,
 		L"STATIC",
 		L"Hikvision Live View",
@@ -157,7 +170,7 @@ cameraSet logIn(const char* ip, const char* id, const char* pw, int port)
 }
 
 //라이브 뷰 설정 함수
-NET_DVR_PREVIEWINFO setPreviewInfo(int lChannel, int dwStreamType, int dwLinkMode, HWND hwnd) 
+NET_DVR_PREVIEWINFO setPreviewInfo(int lChannel, int dwStreamType, int dwLinkMode, HWND hwnd)
 {
 	NET_DVR_PREVIEWINFO previewInfo = { 0 };
 	previewInfo.lChannel = lChannel;
@@ -178,7 +191,8 @@ void showWindow()
 	}
 }
 
-void checkError() {
+void checkError() 
+{
 	if (NET_DVR_GetLastError() != 0) {
 		switch (NET_DVR_GetLastError())
 		{
@@ -271,4 +285,29 @@ LONG startLiveStream(cameraSet cam, HWND hwnd)
 		cout << "라이브 뷰 시작 성공" << endl;
 	}
 	return playHandle;
+}
+
+Config setConfig()
+{
+	Config config;
+	string temp_server_ip;
+	string temp_username;
+	string temp_password;
+
+	cout << "서버 IP: ";
+	cin >> temp_server_ip;
+	config.server_ip = strdup(temp_server_ip.c_str()); // 문자열 복사
+
+	cout << "서버 포트: ";
+	cin >> config.server_port;
+
+	cout << "사용자 이름: ";
+	cin >> temp_username;
+	config.username = strdup(temp_username.c_str()); // 문자열 복사
+
+	cout << "비밀번호: ";
+	cin >> temp_password;
+	config.password = strdup(temp_password.c_str()); // 문자열 복사
+
+	return config;
 }

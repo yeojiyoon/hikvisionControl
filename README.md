@@ -9,3 +9,50 @@ hikvision사의 CCTV조작 프로그램 제작
 - 기간: 2024.12.24-
 - IDE: Visual Studio 2022
 - language: C/C++
+
+---
+- IVMS-4200
+https://www.hikvision.com/korean/support/download/software/ivms4200-series/
+- SADP
+https://www.hikvision.com/korean/support/tools/hitools/clea8b3e4ea7da90a9/
+두 가지 프로그램에서 IP / pw / port num 설정이 가능합니다.
+
+사용하던 PC visual studio 어플리케이션 - hikvisionControl.sln 실행하면 코드 남아있습니다. (thread_test 브랜치 쪽으로 실행해주셔야 합니다.) 작성 중이던 함수는 지워뒀기에 실행하면 오류 없이 돌아갑니다.
+현재는 레포지토리의 상위 폴더에 작성 시간을 파일명으로 저장됩니다.
+
+- 녹화, ZOOM IN / OUT 구현되어 있으며 각종 예외는 잡아뒀습니다.
+
+========================
+
+- hikvisionControl.cpp: main
+  ㄴConfig 구조체: 로그인 정보 저장(const * char 형태. 이후 로그인에 필요한 형태로는 cameraSet 클래스에서 저장)
+  ㄴlogError(const string& message): 로그파일 저장
+  ㄴsetTimer(): 타이머 세팅
+  ㄴinit(): api 초기화
+  ㄴcreateWindow(): 녹화 화면 띄울 윈도우 생성
+  ㄴlogIn(): IP카메라 로그인 (로그인 된 cameraSet 객체 cam 생성, 해당 객체 리턴)
+  ㄴshowWindow(): 
+  ㄴcheckError(): 에러 체크 함수. (chatGPT사용. sdk 파일 캡처해서 chat gpt에 집어넣은 후, 에러 내용들을 생성하게끔 요청했습니다.)
+  ㄴstartLiveStream(cameraset cam, HWND hwnd): hwnd 윈도우에 라이브 영상 송출 
+  ㄴsetConfig(): 로그인 input 받아 출력
+
+- PTZController.h: 녹화, 및 PTZ 헤더. 
+  ㄴhandleError(): 에러코드 출력(디버깅용 함수)
+  ㄴhandlePTZControl(PTZCommand cmd, bool& startFlag, bool& stopFlag): ZOON IN / OUT 실행
+  ㄴsetFileName(): 파일 이름 + 경로 함께 지정(상대경로 지정)
+  ㄴStartRecording(): 녹화 시작
+  ㄴStopRecording(): 녹화 종료
+  ㄴprintMenu(): 메뉴 출력
+  ㄴtoggleRecording(): 레코딩 여부 판별 및 제어
+  ㄴrun(): PTZ 및 녹화 실행
+  ㄴstart(): 스레드 추가(main에서 실행)
+  ㄴstop(): 스레드 프로세스 종료
+
+
+- cameraSet.h: 각 const* char에 대해 sdk에서 로그인 시 요구하는 형태의 구조체로 저장 및 로그인
+로그인을 위해 필요한 정보: NET_DVR_USER_LOGIN_INFO(SDK 로그인 api 호출 시 필요한 자료형), NET_DVR_DEVICEINFO_V40(SDK 로그인 api 호출 시 필요한 자료형)
+LONG lUserID: 로그인 성공 실패 판단을 위한 변수
+로그인 함수: NET_DVR_Login_V40(): 로그인 시 -1이상의 값을 return. 자료형은 LONG
+  ㄴcameraSet(): setLoginInfo에서 저장한 값들을 mapping
+  ㄴsetLoginInfo(): loginInfo에 필요한 값들을 받아옴.
+  ㄴsetIUserID(): 로그인 실행

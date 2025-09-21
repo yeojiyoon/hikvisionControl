@@ -1,12 +1,8 @@
-## 목차
-- [목표](#목표)
-- [개요](#개요)
-
 ## 목표
 hikvision사의 CCTV조작 프로그램 제작
 
 ## 개요
-- 기간: 2024.12.24-
+- 기간: 2024.12.24-2025.02.10
 - IDE: Visual Studio 2022
 - language: C/C++
 
@@ -17,10 +13,7 @@ https://www.hikvision.com/korean/support/download/software/ivms4200-series/
 https://www.hikvision.com/korean/support/tools/hitools/clea8b3e4ea7da90a9/
 두 가지 프로그램에서 IP / pw / port num 설정이 가능합니다.
 
-사용하던 PC visual studio 어플리케이션 - hikvisionControl.sln 실행하면 코드 남아있습니다. (thread_test 브랜치 쪽으로 실행해주셔야 합니다.) 작성 중이던 함수는 지워뒀기에 실행하면 오류 없이 돌아갑니다.
-현재는 레포지토리의 상위 폴더에 작성 시간을 파일명으로 저장됩니다.
-
-- 녹화, ZOOM IN / OUT 구현되어 있으며 각종 예외는 잡아뒀습니다.
+- 녹화, ZOOM IN / OUT 구현
 
 ========================
 
